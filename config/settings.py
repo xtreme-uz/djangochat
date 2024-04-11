@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'daphne',
     'django.contrib.staticfiles',
     'channels',
-    'chat'
+    'chat',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -128,3 +129,8 @@ CHANNEL_LAYERS = {
 
 LOGIN_REDIRECT_URL = "chat-page"
 LOGOUT_REDIRECT_URL = "login-user"
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 50
+}
