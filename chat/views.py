@@ -32,18 +32,25 @@ class UserRegistrationView(APIView):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows users to be viewed or edited.
-    """
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    @action(detail=False, url_path='search')
+    def get_queryset(self, req):
+        search_term = req.query_params.get('term', None)
+        if search_term is None or search_term == '':
+            users = User.objects.none()
+        else:
+            users = User.objects.filter(username__contains=search_term)
+
+        page = self.paginate_queryset(users)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
 
 class GroupViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
     queryset = Group.objects.all().order_by('name')
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated]
