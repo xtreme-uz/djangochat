@@ -2,6 +2,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from rest_framework import permissions, viewsets
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
@@ -52,6 +53,16 @@ class ChatViewSet(viewsets.ModelViewSet):
     queryset = Chat.objects.all().order_by('created')
     serializer_class = ChatSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, url_path="me")
+    def user_chats(self, req):
+        user = req.user
+        user_chats = Chat.objects.filter(members__member_id=user.id)
+
+        page = self.paginate_queryset(user_chats)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
 
 class ChatMemberViewSet(viewsets.ModelViewSet):

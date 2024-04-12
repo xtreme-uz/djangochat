@@ -9,7 +9,7 @@ class Chat(models.Model):
 
 
 class ChatMember(models.Model):
-    chat_id = models.ForeignKey(Chat, on_delete=models.CASCADE)
+    chat_id = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='members')
     member_id = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:
