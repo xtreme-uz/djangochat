@@ -37,9 +37,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(self.group, message)
 
     async def sendMessage(self, event):
-        message = event["message"]
-        username = event["username"]
-        await self.send(text_data=json.dumps({"message": message, "username": username}))
+        await self.send(text_data=json.dumps({"message": event["message"], "username": event["username"], }))
 
     @database_sync_to_async
     def validate_user(self):
