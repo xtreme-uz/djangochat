@@ -71,6 +71,24 @@ class ChatViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
 
+    @action(detail=False, url_path="start")
+    def start_chat(self, req):
+        current_user = req.user
+        user = req.query_params.get('user', None)
+        chat = Chat.objects.filter(type='private', members__member_id__in=[current_user.id, user]).distinct().first()
+        if not chat:
+            chat = Chat(type='private')
+            chat.save()
+            chat_member_1 = ChatMember(chat_id=chat, member_id_id=current_user.id)
+            chat_member_1.save()
+            chat_member_2 = ChatMember(chat_id=chat, member_id_id=user)
+            chat_member_2.save()
+            chat.members.add(chat_member_1)
+            chat.members.add(chat_member_2)
+
+        serializer = self.get_serializer(chat, many=False)
+        return Response(serializer.data)
+
 
 class ChatMemberViewSet(viewsets.ModelViewSet):
     queryset = ChatMember.objects.all()

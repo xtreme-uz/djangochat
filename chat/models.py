@@ -3,7 +3,7 @@ from django.db import models
 
 
 class Chat(models.Model):
-    id = models.IntegerField(primary_key=True)
+    id = models.AutoField(primary_key=True)
     created = models.DateTimeField(auto_now_add=True)
     type = models.CharField(max_length=50)
 
