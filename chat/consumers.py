@@ -1,23 +1,25 @@
 import json
 
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
+
+from chat.models import ChatMember
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.chat_id = self.scope['url_route']['kwargs']['chat_id']
         self.group = "private_group_" + str(self.chat_id)
-        self.user = self.scope["user"]
-        print("Current_user: " + str(self.user))
-        # TODO need to check user can join group
-        # get chat_member by current_user and chat_id
-        # if chat_member found then continue connection to chat
-        await self.channel_layer.group_add(
-            self.group,
-            self.channel_name
-        )
-
-        await self.accept()
+        self.user_id = self.scope["user"].id
+        self.chat_member_exists = await self.validate_user()
+        if self.chat_member_exists:
+            await self.channel_layer.group_add(
+                self.group,
+                self.channel_name
+            )
+            await self.accept()
+        else:
+            await self.close()
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
@@ -38,3 +40,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message = event["message"]
         username = event["username"]
         await self.send(text_data=json.dumps({"message": message, "username": username}))
+
+    @database_sync_to_async
+    def validate_user(self):
+        return ChatMember.objects.filter(chat_id=self.chat_id, member_id=self.user_id).exists()
