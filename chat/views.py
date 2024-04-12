@@ -1,16 +1,33 @@
-from django.contrib.auth.models import Group, User
-from django.shortcuts import render, redirect
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import User
 from rest_framework import permissions, viewsets
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 
 from chat.models import Chat, ChatMember, Message
-from chat.serializers import UserSerializer, GroupSerializer, ChatSerializer, ChatMemberSerializer, MessageSerializer
+from chat.serializers import GroupSerializer, ChatSerializer, ChatMemberSerializer, MessageSerializer, \
+    UserRegistrationSerializer
+from .serializers import UserSerializer
 
 
-def chat_page(request, *args, **kwargs):
-    if not request.user.is_authenticated:
-        return redirect("login-user")
-    context = {}
-    return render(request, "chat/ChatPage.html", context)
+class UserRegistrationView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = UserRegistrationSerializer
+
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            access = AccessToken.for_user(user)
+            refresh = RefreshToken.for_user(user)
+            res = {
+                'refresh': str(refresh),
+                'access': str(access),
+            }
+            return Response(res, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):

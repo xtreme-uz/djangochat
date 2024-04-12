@@ -1,7 +1,25 @@
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from chat.models import Chat, ChatMember, Message
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(write_only=True)
+    email = serializers.EmailField(write_only=True)
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password']
+
+    def create(self, validated_data):
+        username = validated_data['username']
+        email = validated_data['email']
+        password = validated_data['password']
+
+        return User.objects.create_user(username=username, email=email, password=password)
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
