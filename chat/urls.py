@@ -12,10 +12,5 @@ api_router.register(r'chat-members', views.ChatMemberViewSet)
 api_router.register(r'messages', views.MessageViewSet)
 
 urlpatterns = [
-    path("", views.chat_page, name="chat-page"),
-
-    # login-section
-    path("auth/login/", LoginView.as_view(template_name="chat/LoginPage.html"), name="login-user"),
-    path("auth/logout/", LogoutView.as_view(), name="logout-user"),
     path("api/", include(api_router.urls)),
 ]
