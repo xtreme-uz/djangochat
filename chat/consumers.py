@@ -3,7 +3,7 @@ import json
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-from chat.models import ChatMember
+from chat.models import ChatMember, Message
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -29,6 +29,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
+        await Message(chat_id_id=self.chat_id, user_id_id=self.user_id, content=text_data_json["message"]).asave()
         message = {
             "type": "sendMessage",
             "message": text_data_json["message"],
