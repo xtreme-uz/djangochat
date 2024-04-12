@@ -100,3 +100,18 @@ class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all().order_by('created')
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, url_path="chat")
+    def chat_messages(self, req):
+        current_user = req.user
+        chat_id = req.query_params.get('chat_id', None)
+        is_user_chat_member = ChatMember.objects.filter(chat_id_id=chat_id, member_id_id=current_user.id).exists()
+        if is_user_chat_member:
+            messages = Message.objects.filter(chat_id__id=chat_id).order_by('created')
+        else:
+            messages = Message.objects.none()
+
+        page = self.paginate_queryset(messages)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
