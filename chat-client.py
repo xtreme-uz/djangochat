@@ -1,7 +1,6 @@
 import socket
 import threading
 
-# Server address
 HOST = '127.0.0.1'  # localhost
 PORT = 5555
 
@@ -20,7 +19,7 @@ def receive_messages(client_socket):
 def send_messages(client_socket):
     """Continuously send messages to the server."""
     while True:
-        message = input("You: ")
+        message = input("")
         client_socket.send(message.encode('utf-8'))
 
 def start_client():
@@ -28,7 +27,7 @@ def start_client():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((HOST, PORT))
 
-    # Start threads for sending and receiving messages
+    # Start threads for receiving and sending messages
     threading.Thread(target=receive_messages, args=(client_socket,)).start()
     threading.Thread(target=send_messages, args=(client_socket,)).start()
 
