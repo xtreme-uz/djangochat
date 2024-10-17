@@ -5,18 +5,18 @@ import threading
 HOST = '127.0.0.1'  # localhost
 PORT = 5555         # Port to listen on
 
-clients = []
-usernames = {}
+clients = {}  # Maps client sockets to their info (username, current room)
+rooms = {}    # Maps room names to a list of client sockets
 
-def broadcast_message(message, sender_socket=None):
-    """Send a message to all clients except the sender."""
-    for client in clients:
+def broadcast_message(message, room, sender_socket=None):
+    """Send a message to all clients in the same room except the sender."""
+    for client in rooms.get(room, []):
         if client != sender_socket:
             try:
                 client.send(message.encode('utf-8'))
             except:
                 client.close()
-                clients.remove(client)
+                rooms[room].remove(client)
 
 def send_private_message(receiver_socket, message):
     """Send a private message to a specific user."""
@@ -24,54 +24,87 @@ def send_private_message(receiver_socket, message):
         receiver_socket.send(f"Private: {message}".encode('utf-8'))
     except:
         receiver_socket.close()
-        clients.remove(receiver_socket)
+        for room in rooms.values():
+            if receiver_socket in room:
+                room.remove(receiver_socket)
 
 def handle_client(client_socket):
     """Handle communication with a single client."""
     try:
-        # Ask for a username and announce it to the chat
+        # Ask for a username
         client_socket.send("Enter your username: ".encode('utf-8'))
         username = client_socket.recv(1024).decode('utf-8')
-        usernames[client_socket] = username
-        welcome_message = f"{username} has joined the chat!"
-        print(welcome_message)
-        broadcast_message(welcome_message, client_socket)
-        
+        clients[client_socket] = {"username": username, "room": None}
+
+        # Handle room selection
+        while True:
+            client_socket.send("Enter a room name to join or create: ".encode('utf-8'))
+            room_name = client_socket.recv(1024).decode('utf-8')
+
+            if room_name not in rooms:
+                rooms[room_name] = []
+            
+            # Add client to the selected room
+            rooms[room_name].append(client_socket)
+            clients[client_socket]["room"] = room_name
+            welcome_message = f"{username} has joined {room_name}!"
+            broadcast_message(welcome_message, room_name, client_socket)
+            client_socket.send(f"You are now in room: {room_name}".encode('utf-8'))
+            break
+
+        # Message handling within the room
         while True:
             message = client_socket.recv(1024).decode('utf-8')
             if not message:
                 break
-            
-            # Check if the message is a private message (starts with @username)
+
+            # Private message check (starts with @username)
             if message.startswith('@'):
                 recipient_name, private_message = message.split(' ', 1)
                 recipient_name = recipient_name[1:]  # Remove the '@'
 
                 recipient_socket = None
-                for client, user in usernames.items():
-                    if user == recipient_name:
+                for client, info in clients.items():
+                    if info["username"] == recipient_name and info["room"] == clients[client_socket]["room"]:
                         recipient_socket = client
                         break
                 
                 if recipient_socket:
-                    private_msg = f"{usernames[client_socket]} (private): {private_message}"
+                    private_msg = f"{clients[client_socket]['username']} (private): {private_message}"
                     send_private_message(recipient_socket, private_msg)
                 else:
-                    client_socket.send(f"User {recipient_name} not found.".encode('utf-8'))
+                    client_socket.send(f"User {recipient_name} not found in this room.".encode('utf-8'))
+            elif message.startswith('/switch'):
+                # Switch room logic
+                new_room = message.split(' ')[1]
+                if new_room not in rooms:
+                    rooms[new_room] = []
+
+                # Leave the current room
+                current_room = clients[client_socket]["room"]
+                rooms[current_room].remove(client_socket)
+                broadcast_message(f"{clients[client_socket]['username']} has left the room.", current_room)
+
+                # Join the new room
+                rooms[new_room].append(client_socket)
+                clients[client_socket]["room"] = new_room
+                broadcast_message(f"{clients[client_socket]['username']} has joined the room.", new_room)
+                client_socket.send(f"You have switched to room: {new_room}".encode('utf-8'))
             else:
-                # Otherwise, broadcast the message to all clients
-                formatted_message = f"{usernames[client_socket]}: {message}"
-                print(formatted_message)
-                broadcast_message(formatted_message, client_socket)
+                # Broadcast the message to the current room
+                current_room = clients[client_socket]["room"]
+                formatted_message = f"{clients[client_socket]['username']}: {message}"
+                broadcast_message(formatted_message, current_room, client_socket)
     except:
         pass
     finally:
         # Remove client and notify others
-        clients.remove(client_socket)
-        leave_message = f"{usernames[client_socket]} has left the chat."
-        print(leave_message)
-        broadcast_message(leave_message)
-        del usernames[client_socket]
+        if client_socket in clients:
+            room = clients[client_socket]["room"]
+            if room and client_socket in rooms.get(room, []):
+                rooms[room].remove(client_socket)
+                broadcast_message(f"{clients[client_socket]['username']} has left the chat.", room)
+            del clients[client_socket]
         client_socket.close()
 
 def start_server():
@@ -85,7 +118,6 @@ def start_server():
     while True:
         client_socket, addr = server_socket.accept()
         print(f"Connection from {addr}")
-        clients.append(client_socket)
         threading.Thread(target=handle_client, args=(client_socket,)).start()
 
 if __name__ == "__main__":
